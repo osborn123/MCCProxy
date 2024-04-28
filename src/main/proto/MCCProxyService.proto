@@ -1,0 +1,28 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "org.mccproxy.service";
+option java_outer_classname = "MCCProxyServiceProto";
+
+package mccproxy;
+
+service MCCProxyService {
+  rpc Read(ReadRequest) returns (ReadResponse) {}
+  rpc Invalidate(InvalidateRequest) returns (InvalidateResponse) {}
+}
+
+message ReadRequest {
+  repeated string keys = 1;
+}
+
+message ReadResponse {
+  repeated string data = 1;
+}
+
+message InvalidateRequest {
+  repeated string key = 1;
+}
+
+message InvalidateResponse {
+  bool success = 1;
+}
