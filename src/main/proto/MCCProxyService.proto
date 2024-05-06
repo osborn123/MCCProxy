@@ -1,5 +1,8 @@
 syntax = "proto3";
 
+import "google/protobuf/timestamp.proto";
+
+
 option java_multiple_files = true;
 option java_package = "org.mccproxy.service";
 option java_outer_classname = "MCCProxyServiceProto";
@@ -16,11 +19,17 @@ message ReadRequest {
 }
 
 message ReadResponse {
-  repeated string data = 1;
+  repeated Item items = 1;
+}
+
+message Item {
+  string key = 1;
+  string value = 2;
 }
 
 message InvalidateRequest {
-  repeated string key = 1;
+  repeated string keys = 1;
+  google.protobuf.Timestamp timestamp = 2;
 }
 
 message InvalidateResponse {
