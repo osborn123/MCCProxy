@@ -1,49 +1,49 @@
-package org.mccproxy.service;
+package org.mccproxy.proxy;
 
 
+import com.google.common.annotations.VisibleForTesting;
 import io.grpc.Grpc;
 import io.grpc.InsecureServerCredentials;
 import io.grpc.Server;
 import io.grpc.ServerBuilder;
 import io.grpc.stub.StreamObserver;
-import org.mccproxy.proxy.ItemRecord;
-import org.mccproxy.proxy.MCCProxy;
+import org.mccproxy.service.*;
 import org.mccproxy.utils.TimeUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.yaml.snakeyaml.LoaderOptions;
+import org.yaml.snakeyaml.Yaml;
+import org.yaml.snakeyaml.constructor.Constructor;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
 
-/**
- * A sample gRPC server that serve the RouteGuide (see route_guide.proto) service.
- */
 public class MCCProxyServer {
     private static final Logger logger =
             LoggerFactory.getLogger(MCCProxyServer.class.getName());
 
     private final int port;
     private final Server server;
+    private final MCCProxyConfig config;
     private final MCCProxyService mccProxyService;
 
 
-    /**
-     * Create a RouteGuide server listening on {@code port}.
-     */
-    public MCCProxyServer(int port) throws IOException {
+    public MCCProxyServer(int port, String configPath) throws IOException {
         this(Grpc.newServerBuilderForPort(port,
                                           InsecureServerCredentials.create()),
-             port);
+             port, configPath);
     }
 
-    public MCCProxyServer(ServerBuilder<?> serverBuilder, int port)
-            throws IOException {
+    public MCCProxyServer(ServerBuilder<?> serverBuilder, int port,
+                          String configPath) throws IOException {
         this.port = port;
-        this.mccProxyService = new MCCProxyService();
+        this.config = loadConfig(configPath);
+        this.mccProxyService = new MCCProxyService(this.config);
         server = serverBuilder.addService(this.mccProxyService).build();
     }
 
@@ -51,9 +51,22 @@ public class MCCProxyServer {
      * Main method.  This comment makes the linter happy.
      */
     public static void main(String[] args) throws Exception {
-        MCCProxyServer server = new MCCProxyServer(8980);
+        MCCProxyServer server = new MCCProxyServer(8980, "proxy-config.yaml");
         server.start();
         server.blockUntilShutdown();
+    }
+
+    @VisibleForTesting
+    static MCCProxyConfig loadConfig(String configFilePath) {
+        logger.info("MCCProxy::loadConfig - Loading configuration from: {}",
+                    configFilePath);
+        Yaml yaml = new Yaml(
+                new Constructor(MCCProxyConfig.class, new LoaderOptions()));
+        InputStream inputStream = MCCProxyServer.class.getClassLoader()
+                .getResourceAsStream(configFilePath);
+        MCCProxyConfig config = yaml.load(inputStream);
+        logger.info("MCCProxy::MCCProxy - Configuration loaded: {}", config);
+        return config;
     }
 
     /**
@@ -97,11 +110,7 @@ public class MCCProxyServer {
         }
     }
 
-    /**
-     * Our implementation of RouteGuide service.
-     *
-     * <p>See route_guide.proto for details of the methods.
-     */
+
     private static class MCCProxyService
             extends MCCProxyServiceGrpc.MCCProxyServiceImplBase {
 
@@ -111,8 +120,15 @@ public class MCCProxyServer {
         private final MCCProxy proxy;
         private volatile boolean isRunning = true;
 
-        MCCProxyService() {
-            this.proxy = new MCCProxy("src/main/resources/proxy-config.yaml");
+        MCCProxyService(MCCProxyConfig config) {
+            if (config.getVersionSelectionPolicy().equals("EAGER")) {
+                this.proxy = new MCCProxyEager(config);
+            } else {
+                throw new IllegalArgumentException(
+                        "Unsupported version selection policy: " +
+                                config.getVersionSelectionPolicy());
+            }
+
             startTaskProcessingThread();
         }
 

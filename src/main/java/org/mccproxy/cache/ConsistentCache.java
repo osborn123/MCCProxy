@@ -152,6 +152,11 @@ public class ConsistentCache {
 
             ItemNode node = cachedItems.get(item_key);
 
+            // invalidation outdated, there can be updates after the invalidation
+            if (node.version > maxInvalidationTimestamp) {
+                return false;
+            }
+
             // check whether the life cycles of the cached items intersect
             long lifeStart = node.version;
             long lifeEnd = node.validUntil;
@@ -176,7 +181,8 @@ public class ConsistentCache {
             ItemNode node = cachedItems.getOrDefault(key, null);
             if (node == null) {
                 missingItems.add(key);
-            } else if (node.validUntil != Long.MAX_VALUE) {
+            } else if (node.version > maxInvalidationTimestamp ||
+                    node.validUntil != Long.MAX_VALUE) {
                 outdatedItems.add(key);
             } else {
                 hitItems.add(key);

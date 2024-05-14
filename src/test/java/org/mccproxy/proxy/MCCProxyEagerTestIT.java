@@ -17,7 +17,7 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-public class MCCProxyTestIT {
+public class MCCProxyEagerTestIT {
 
     MCCProxy mccProxy = null;
 
@@ -30,7 +30,8 @@ public class MCCProxyTestIT {
         try (EmbeddedPostgres pg = EmbeddedPostgres.builder().setPort(63552)
                 .setServerConfig("track_commit_timestamp", "on").start();
              Connection c = pg.getPostgresDatabase().getConnection()) {
-            mccProxy = new MCCProxy("proxy-config.yaml");
+            mccProxy = new MCCProxyEager(
+                    MCCProxyServer.loadConfig("proxy-config.yaml"));
             mccProxy.start();
 
         } finally {
@@ -48,7 +49,8 @@ public class MCCProxyTestIT {
         try (EmbeddedPostgres pg = EmbeddedPostgres.builder().setPort(63552)
                 .setServerConfig("track_commit_timestamp", "on").start();
              Connection c = pg.getPostgresDatabase().getConnection()) {
-            mccProxy = new MCCProxy("proxy-config.yaml");
+            mccProxy = new MCCProxyEager(
+                    MCCProxyServer.loadConfig("proxy-config.yaml"));
             mccProxy.start();
 
             PostgresConnectorTestIT.createTable(c);
@@ -245,7 +247,8 @@ public class MCCProxyTestIT {
         try (EmbeddedPostgres pg = EmbeddedPostgres.builder().setPort(63552)
                 .setServerConfig("track_commit_timestamp", "on").start();
              Connection c = pg.getPostgresDatabase().getConnection()) {
-            mccProxy = new MCCProxy("proxy-config.yaml");
+            mccProxy = new MCCProxyEager(
+                    MCCProxyServer.loadConfig("proxy-config.yaml"));
             mccProxy.start();
 
             PostgresConnectorTestIT.createTable(c);
@@ -332,8 +335,8 @@ public class MCCProxyTestIT {
                                                         List.of(9, 4),
                                                         List.of(version2,
                                                                 version3));
-            assertEquals(2, mccProxy.dbReadCounter.getCount());
-            assertEquals(3, mccProxy.dbReadItemsCounter.getCount());
+            assertEquals(1, mccProxy.dbReadCounter.getCount());
+            assertEquals(2, mccProxy.dbReadItemsCounter.getCount());
             assertEquals(0, mccProxy.mccHitCounter.getCount());
             assertEquals(0, mccProxy.mccHitItemsCounter.getCount());
 
@@ -407,8 +410,8 @@ public class MCCProxyTestIT {
                                                         List.of(version1,
                                                                 version5,
                                                                 version6));
-            assertEquals(2, mccProxy.dbReadCounter.getCount());
-            assertEquals(4, mccProxy.dbReadItemsCounter.getCount());
+            assertEquals(1, mccProxy.dbReadCounter.getCount());
+            assertEquals(3, mccProxy.dbReadItemsCounter.getCount());
             assertEquals(0, mccProxy.mccHitCounter.getCount());
             assertEquals(0, mccProxy.mccHitItemsCounter.getCount());
 

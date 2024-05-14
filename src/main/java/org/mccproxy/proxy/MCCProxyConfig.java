@@ -1,6 +1,8 @@
 package org.mccproxy.proxy;
 
 public class MCCProxyConfig {
+    private int cacheSize;
+    private String versionSelectionPolicy;
     private RedisConfig redis;
     private PostgresConfig postgres;
 
@@ -18,6 +20,22 @@ public class MCCProxyConfig {
 
     public void setPostgres(PostgresConfig postgres) {
         this.postgres = postgres;
+    }
+
+    public int getCacheSize() {
+        return cacheSize;
+    }
+
+    public void setCacheSize(int cacheSize) {
+        this.cacheSize = cacheSize;
+    }
+
+    public String getVersionSelectionPolicy() {
+        return versionSelectionPolicy;
+    }
+
+    public void setVersionSelectionPolicy(String versionSelectionPolicy) {
+        this.versionSelectionPolicy = versionSelectionPolicy;
     }
 
 
