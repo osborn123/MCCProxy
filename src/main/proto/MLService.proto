@@ -1,0 +1,42 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "org.mccproxy.ml";
+option java_outer_classname = "MLServiceProto";
+
+package mccproxy;
+
+service MLService {
+  rpc Predict(PredictRequest) returns (PredictResponse) {}
+}
+
+message PredictRequest {
+  repeated Feature keys = 1;
+}
+
+message PredictResponse {
+  repeated bool is_obsolete = 1;
+}
+
+message Feature {
+  int32 read_arrive_times_p30 = 1;
+  int32 read_arrive_times_p50 = 2;
+  int32 read_arrive_times_p100 = 3;
+  int32 read_arrive_times_p200 = 4;
+  int32 read_p_delta0 = 5;
+  int32 read_p_delta1 = 6;
+  int32 read_p_delta2 = 7;
+  int32 read_p_delta3 = 8;
+  int32 read_p_delta4 = 9;
+  int32 read_p_delta5 = 10;
+  int32 write_arrive_times_p30 = 11;
+  int32 write_arrive_times_p50 = 12;
+  int32 write_arrive_times_p100 = 13;
+  int32 write_arrive_times_p200 = 14;
+  int32 write_p_delta0 = 15;
+  int32 write_p_delta1 = 16;
+  int32 write_p_delta2 = 17;
+  int32 write_p_delta3 = 18;
+  int32 write_p_delta4 = 19;
+  int32 write_p_delta5 = 20;
+}

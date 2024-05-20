@@ -1,14 +1,12 @@
 package org.mccproxy.cache;
 
 import com.google.common.annotations.VisibleForTesting;
+import org.mccproxy.ml.ObsoleteItemsPredictor;
 import org.mccproxy.proxy.ItemRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 import static java.lang.Long.min;
 import static org.apache.commons.lang3.ObjectUtils.max;
@@ -109,12 +107,30 @@ public class ConsistentCache {
 
     public List<String> getObsoleteItems(Set<String> itemsToKeep) {
         List<String> obsoleteItems = new ArrayList<>();
-        for (String key : cachedItems.keySet()) {
-            if (!itemsToKeep.contains(key) &&
-                    isObsolete(cachedItems.get(key))) {
-                obsoleteItems.add(key);
+
+        int batchSize = 100;
+        List<ItemNode> nodeBatch = new ArrayList<>(batchSize);
+        for (Map.Entry<String, ItemNode> entry : cachedItems.entrySet()) {
+            String key = entry.getKey();
+            ItemNode node = entry.getValue();
+            if (!itemsToKeep.contains(key)) {
+                nodeBatch.add(node);
+                if (nodeBatch.size() > batchSize) {
+                    List<Boolean> isObsolete =
+                            ObsoleteItemsPredictor.getInstance()
+                                    .predictObsoleteItems(nodeBatch.stream()
+                                                                  .map(n -> n.accessTracker)
+                                                                  .toList());
+                    for (int i = 0; i < nodeBatch.size(); i++) {
+                        if (isObsolete.get(i)) {
+                            obsoleteItems.add(nodeBatch.get(i).key);
+                        }
+                    }
+                    nodeBatch.clear();
+                }
             }
         }
+
         logger.info("ConsistentCache::getObsoleteItems - Obsolete items: {}",
                     obsoleteItems);
         return obsoleteItems;
@@ -370,6 +386,8 @@ public class ConsistentCache {
         private long version;
         private int dataSize;
         private boolean mark; // to divide the run into phases
+
+        private AccessTracker accessTracker;
 
         public ItemNode() {
         }
