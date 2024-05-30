@@ -1,5 +1,7 @@
 package org.mccproxy.cache;
 
+import org.mccproxy.ml.RawFeature;
+
 public interface AccessTracker {
     void recordRead(long timeStep);
 
@@ -7,11 +9,13 @@ public interface AccessTracker {
 
     void syncTimeStep(long timeStep);
 
-    int getNumReadsLastKTimeSteps(int k);
+    RawFeature toRawFeature();
 
-    int getNumWritesLastKTimeSteps(int k);
-
-    int[] getNumStepsBetweenReads(int k);
-
-    int[] getNumStepsBetweenWrites(int k);
+    //    int getNumReadsLastKTimeSteps(int k);
+    //
+    //    int getNumWritesLastKTimeSteps(int k);
+    //
+    //    int[] getNumStepsBetweenReads(int k);
+    //
+    //    int[] getNumStepsBetweenWrites(int k);
 }

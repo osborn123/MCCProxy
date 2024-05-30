@@ -4,23 +4,11 @@ import org.mccproxy.cache.AccessTracker;
 
 import java.util.List;
 
-public class ObsoleteItemsPredictor {
-    private static ObsoleteItemsPredictor instance = null;
+public abstract class ObsoleteItemsPredictor {
 
-    FeatureExtractor featureExtractor = new FeatureExtractor();
-
-    public ObsoleteItemsPredictor() {
+    protected ObsoleteItemsPredictor() {
     }
 
-    public static ObsoleteItemsPredictor getInstance() {
-        if (instance == null) {
-            instance = new ObsoleteItemsPredictor();
-        }
-        return instance;
-    }
-
-    public List<Boolean> predictObsoleteItems(
-            List<AccessTracker> accessTrackers) {
-        return null;
-    }
+    abstract public List<Boolean> predictObsoleteItems(
+            List<AccessTracker> accessTrackers);
 }

@@ -31,6 +31,9 @@ public abstract class MCCProxy {
     @VisibleForTesting
     final Counter dbReadItemsCounter;
 
+    protected long timeStep = 0;
+
+
     public MCCProxy(MCCProxyConfig config) {
         this.cacheConnector = new RedisConnector(config.getRedis().getHost(),
                                                  config.getRedis().getPort());

@@ -1,5 +1,10 @@
 cacheSize: 1000
 versionSelectionPolicy: EAGER
+
+mlService:
+  host: localhost
+  port: 50051
+
 redis:
   host: localhost
   port: 6379

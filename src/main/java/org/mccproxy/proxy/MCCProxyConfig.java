@@ -5,6 +5,7 @@ public class MCCProxyConfig {
     private String versionSelectionPolicy;
     private RedisConfig redis;
     private PostgresConfig postgres;
+    private MLServiceConfig mlServiceConfig;
 
     public RedisConfig getRedis() {
         return redis;
@@ -36,6 +37,14 @@ public class MCCProxyConfig {
 
     public void setVersionSelectionPolicy(String versionSelectionPolicy) {
         this.versionSelectionPolicy = versionSelectionPolicy;
+    }
+
+    public MLServiceConfig getMlServiceConfig() {
+        return mlServiceConfig;
+    }
+
+    public void setMlServiceConfig(MLServiceConfig mlServiceConfig) {
+        this.mlServiceConfig = mlServiceConfig;
     }
 
 
@@ -89,6 +98,27 @@ public class MCCProxyConfig {
 
         public void setPassword(String password) {
             this.password = password;
+        }
+    }
+
+    public static class MLServiceConfig {
+        private String host;
+        private int port;
+
+        public String getHost() {
+            return host;
+        }
+
+        public void setHost(String host) {
+            this.host = host;
+        }
+
+        public int getPort() {
+            return port;
+        }
+
+        public void setPort(int port) {
+            this.port = port;
         }
     }
 }

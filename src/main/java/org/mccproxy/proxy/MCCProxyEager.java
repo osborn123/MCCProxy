@@ -17,6 +17,8 @@ public class MCCProxyEager extends MCCProxy {
 
     @Override
     public List<ItemRecord> processRead(List<String> keys) {
+        timeStep++;
+
         logger.info("MCCProxy::processRead - Processing read for keys: {}",
                     keys);
         if (keys.isEmpty()) {
@@ -143,7 +145,7 @@ public class MCCProxyEager extends MCCProxy {
                 cache.startNewPhase();
 
                 List<String> obsoleteItems =
-                        cache.getObsoleteItems(decidedItems);
+                        cache.getObsoleteItems(decidedItems, this.timeStep);
                 int obsoleteItemsSize = cache.getDataSize(obsoleteItems);
                 itemsToEvict.addAll(obsoleteItems);
                 neededSize -= obsoleteItemsSize;
@@ -173,7 +175,8 @@ public class MCCProxyEager extends MCCProxy {
         logger.info("MCCProxy::processRead - Cache execution results: {}",
                     cacheResults);
 
-        this.cache.postCacheUpdate(hitItems, itemsToEvict, itemsFromDb);
+        this.cache.postCacheUpdate(hitItems, itemsToEvict, itemsFromDb,
+                                   this.timeStep);
 
         List<ItemRecord> results = new ArrayList<>();
         for (int i = 0; i < hitItems.size(); i++) {
@@ -198,8 +201,9 @@ public class MCCProxyEager extends MCCProxy {
 
     @Override
     public boolean processInvalidation(List<String> keys, long newVersion) {
+        timeStep++;
         for (String key : keys) {
-            cache.invalidate(key, newVersion);
+            cache.invalidate(key, newVersion, timeStep);
         }
         return true;
     }

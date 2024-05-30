@@ -2,6 +2,7 @@ package org.mccproxy.cache;
 
 import com.google.common.annotations.VisibleForTesting;
 import org.mccproxy.ml.ObsoleteItemsPredictor;
+import org.mccproxy.ml.SimpleObsoleteItemsPredictor;
 import org.mccproxy.proxy.ItemRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,6 +20,7 @@ public class ConsistentCache {
     private int currentSize;
     private int maxSize;
     private int itemCount;
+    private ObsoleteItemsPredictor obsoleteItemsPredictor;
 
     // to divide the run into phases
     //    An item in C is marked at the time when it is brought into C, or
@@ -41,6 +43,7 @@ public class ConsistentCache {
         dummyTail.prev = dummyHead;
 
         this.maxSize = maxSize;
+        obsoleteItemsPredictor = new SimpleObsoleteItemsPredictor();
 
         logger.info("ConsistentCache initialized with maxSize={}", maxSize);
     }
@@ -78,6 +81,10 @@ public class ConsistentCache {
     }
 
     public void invalidate(String key, long newVersion) {
+        invalidate(key, newVersion, 0);
+    }
+
+    public void invalidate(String key, long newVersion, long timeStep) {
         logger.info(
                 "ConsistentCache::invalidate - Invalidating item with key={} newVersion={}",
                 key, newVersion);
@@ -88,6 +95,10 @@ public class ConsistentCache {
 
         if (cachedItems.containsKey(key)) {
             ItemNode node = cachedItems.get(key);
+
+            // access write for ML feature
+            node.accessTracker.recordWrite(timeStep);
+
             if (node.validUntil == Long.MAX_VALUE &&
                     node.version < newVersion) {
                 node.validUntil = newVersion;
@@ -105,7 +116,8 @@ public class ConsistentCache {
                      this);
     }
 
-    public List<String> getObsoleteItems(Set<String> itemsToKeep) {
+    public List<String> getObsoleteItems(Set<String> itemsToKeep,
+                                         long timeStep) {
         List<String> obsoleteItems = new ArrayList<>();
 
         int batchSize = 100;
@@ -114,13 +126,14 @@ public class ConsistentCache {
             String key = entry.getKey();
             ItemNode node = entry.getValue();
             if (!itemsToKeep.contains(key)) {
+                node.accessTracker.syncTimeStep(timeStep);
+
                 nodeBatch.add(node);
                 if (nodeBatch.size() > batchSize) {
                     List<Boolean> isObsolete =
-                            ObsoleteItemsPredictor.getInstance()
-                                    .predictObsoleteItems(nodeBatch.stream()
-                                                                  .map(n -> n.accessTracker)
-                                                                  .toList());
+                            obsoleteItemsPredictor.predictObsoleteItems(
+                                    nodeBatch.stream().map(n -> n.accessTracker)
+                                            .toList());
                     for (int i = 0; i < nodeBatch.size(); i++) {
                         if (isObsolete.get(i)) {
                             obsoleteItems.add(nodeBatch.get(i).key);
@@ -217,9 +230,9 @@ public class ConsistentCache {
 
     public void postCacheUpdate(List<String> hitItems,
                                 List<String> evictedItems,
-                                List<ItemRecord> newItems) {
+                                List<ItemRecord> newItems, long timeStep) {
         for (String key : hitItems) {
-            access(key);
+            access(key, timeStep);
         }
 
         for (String key : evictedItems) {
@@ -227,7 +240,8 @@ public class ConsistentCache {
         }
 
         for (ItemRecord record : newItems) {
-            put(record.getKey(), record.getVersion(), record.getSize());
+            put(record.getKey(), record.getVersion(), record.getSize(),
+                timeStep);
         }
 
         logger.info(
@@ -270,6 +284,11 @@ public class ConsistentCache {
 
     @VisibleForTesting
     void put(String key, long version, int dataSize) {
+        put(key, version, dataSize, 0);
+    }
+
+    @VisibleForTesting
+    void put(String key, long version, int dataSize, long timeStep) {
         if (cachedItems.containsKey(key)) {
             ItemNode node = cachedItems.get(key);
             long oldVersion = node.version;
@@ -278,6 +297,7 @@ public class ConsistentCache {
 
             node.version = version;
             node.validUntil = Long.MAX_VALUE;
+            node.accessTracker.recordRead(timeStep);
 
             currentSize += dataSize - node.dataSize;
             node.dataSize = dataSize;
@@ -292,10 +312,12 @@ public class ConsistentCache {
                     node.validUntil, oldDataSize, node.dataSize);
         } else {
             ItemNode node = new ItemNode(key, version, Long.MAX_VALUE, dataSize,
-                                         currentPhaseMark);
+                                         currentPhaseMark, timeStep);
             currentSize += dataSize;
             addNode(node);
             cachedItems.put(key, node);
+
+            node.accessTracker.recordRead(timeStep);
 
             itemCount++;
             markedItemCount++;
@@ -330,10 +352,17 @@ public class ConsistentCache {
 
     @VisibleForTesting
     void access(String key) {
+        access(key, 0);
+    }
+
+    @VisibleForTesting
+    void access(String key, long timeStep) {
         if (cachedItems.containsKey(key)) {
             ItemNode node = cachedItems.get(key);
             removeNode(node);
             addNode(node);
+            node.accessTracker.recordRead(timeStep);
+
             logger.info("ConsistentCache::access - Accessed item with key={}",
                         key);
         } else {
@@ -393,12 +422,15 @@ public class ConsistentCache {
         }
 
         public ItemNode(String key, long version, long validUntil, int dataSize,
-                        boolean mark) {
+                        boolean mark, long timeStep) {
             this.key = key;
             this.version = version;
             this.validUntil = validUntil;
             this.dataSize = dataSize;
             this.mark = mark;
+
+            accessTracker = new VariableSizeAccessTracker(256);
+            accessTracker.syncTimeStep(timeStep);
         }
 
         @Override

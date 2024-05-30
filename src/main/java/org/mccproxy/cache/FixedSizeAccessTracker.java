@@ -1,5 +1,7 @@
 package org.mccproxy.cache;
 
+import org.mccproxy.ml.RawFeature;
+
 public class FixedSizeAccessTracker implements AccessTracker {
     private long readAccesses;
     private long writeAccesses;
@@ -33,24 +35,30 @@ public class FixedSizeAccessTracker implements AccessTracker {
     }
 
     @Override
-    public int getNumReadsLastKTimeSteps(int k) {
-        return Long.bitCount(readAccesses & ((1L << k) - 1));
+    public RawFeature toRawFeature() {
+        return RawFeature.newBuilder().addReadAccesses(readAccesses)
+                .addWriteAccesses(writeAccesses).build();
     }
-
-    @Override
-    public int getNumWritesLastKTimeSteps(int k) {
-        return Long.bitCount(writeAccesses & ((1L << k) - 1));
-    }
-
-    @Override
-    public int[] getNumStepsBetweenReads(int k) {
-        return getNumStepsBetweenAccesses(readAccesses, k);
-    }
-
-    @Override
-    public int[] getNumStepsBetweenWrites(int k) {
-        return getNumStepsBetweenAccesses(writeAccesses, k);
-    }
+    //
+    //    @Override
+    //    public int getNumReadsLastKTimeSteps(int k) {
+    //        return Long.bitCount(readAccesses & ((1L << k) - 1));
+    //    }
+    //
+    //    @Override
+    //    public int getNumWritesLastKTimeSteps(int k) {
+    //        return Long.bitCount(writeAccesses & ((1L << k) - 1));
+    //    }
+    //
+    //    @Override
+    //    public int[] getNumStepsBetweenReads(int k) {
+    //        return getNumStepsBetweenAccesses(readAccesses, k);
+    //    }
+    //
+    //    @Override
+    //    public int[] getNumStepsBetweenWrites(int k) {
+    //        return getNumStepsBetweenAccesses(writeAccesses, k);
+    //    }
 
     private int[] getNumStepsBetweenAccesses(long accesses, int k) {
         int[] distances = new int[k];
